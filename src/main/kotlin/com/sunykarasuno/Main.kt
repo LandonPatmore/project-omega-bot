@@ -1,4 +1,9 @@
 package com.sunykarasuno
 
-class Main {
+import com.sunykarasuno.networking.rest.DiscordService
+import com.sunykarasuno.networking.websockets.GatewayService
+
+fun main() {
+    val d = DiscordService(System.getenv("TOKEN"))
+    GatewayService(d)
 }

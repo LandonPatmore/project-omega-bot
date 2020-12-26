@@ -12,6 +12,7 @@ object Dependencies {
         const val EXPOSED_DAO = "org.jetbrains.exposed:exposed-dao:${Versions.EXPOSED}"
         const val EXPOSED_JDBC = "org.jetbrains.exposed:exposed-jdbc:${Versions.EXPOSED}"
         const val OK_HTTP = "com.squareup.okhttp3:okhttp:${Versions.OK_HTTP}"
+        const val RETROFIT_GSON = "com.squareup.retrofit2:converter-gson:${Versions.RETROFIT}"
     }
 
     object Plugins {
