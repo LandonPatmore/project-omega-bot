@@ -38,6 +38,8 @@ dependencies {
 
     // Networking and Authentication
     implementation(Dependencies.Bot.RETROFIT)
+    implementation(Dependencies.Bot.RETROFIT_GSON)
+    implementation(Dependencies.Bot.OK_HTTP)
     implementation(Dependencies.Bot.SCRIBE)
 
     // Cron
