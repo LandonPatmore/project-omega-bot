@@ -2,6 +2,7 @@ package com.sunykarasuno.networking.websockets
 
 import com.google.gson.Gson
 import com.jakewharton.rxrelay3.PublishRelay
+import com.sunykarasuno.networking.models.GatewayIdentify
 import com.sunykarasuno.networking.models.ReceivableGatewayEvent
 import com.sunykarasuno.networking.rest.DiscordService
 import io.reactivex.rxjava3.functions.Consumer
@@ -13,7 +14,8 @@ import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 
 class GatewayService(
-    private val discordService: DiscordService
+    private val discordService: DiscordService,
+    private val token: String
 ) : NetworkingProtocol {
 
     private val relay = PublishRelay.create<Any>()
@@ -27,7 +29,7 @@ class GatewayService(
     init {
         // TODO: Needs to be retried based on Discord's docs
         discordService.getGateway()?.let {
-            createConnection(it.url)
+            createConnection("${it.url}/?v=$VERSION")
         } ?: println("Could not get gateway info")
     }
 
@@ -55,18 +57,31 @@ class GatewayService(
                             ReceivableGatewayEvent::class.java
                         )
 
+                        // save sequence number of last event received
                         when (message.code) {
+                            0 -> {
+                                // Dispatched message
+                            }
                             1 -> {
                                 println("Received heartbeat message")
                                 // Heartbeat, heartbeat ack back
                             }
+                            7 -> {
+                                // Reconnect and now immediately resume
+                            }
+                            9 -> {
+                                // Invalid session
+                            }
                             10 -> {
                                 println("Received hello message")
+                                // TODO: Save hello message data
+                                webSocket.send(json(createIdentifyMessage()))
                                 // Hello, we need to ack back 1 after heartbeat seconds
                                 // We now need to identify with 2
                             }
                             11 -> {
                                 println("Received heartbeat ack message")
+                                // flag this
                                 // Heartbeat ack, no need to do anything, however close connection if going to
                                 // send 1, but 11 was never received before this with a non-1000 code
                             }
@@ -94,10 +109,33 @@ class GatewayService(
     override fun closeConnection() {
         websSocket?.close(CLOSE_CODE, "Requested to shutdown by bot itself")
             ?: println("WebSocket could not be closed because it was not open")
+        // start back up, and send a gateway resume instead of identify
+    }
+
+    private fun createIdentifyMessage(): GatewayIdentify {
+        return GatewayIdentify(
+            GatewayIdentify.IdentificationInfo(
+                token,
+                INTENT,
+                GatewayIdentify.PropertiesInfo(
+                    OS,
+                    LIBRARY,
+                    LIBRARY
+                )
+            )
+        )
+    }
+
+    private fun json(obj: Any): String {
+        return gson.toJson(obj)
     }
 
     companion object {
+        private const val INTENT = 32735
+        private const val VERSION = 8
         private const val CONNECTION_TIMEOUT = 30L
         private const val CLOSE_CODE = 1000
+        private const val OS = "Linux"
+        private const val LIBRARY = "Omega"
     }
 }
