@@ -1,17 +1,22 @@
 package com.sunykarasuno.networking.websockets
 
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.jakewharton.rxrelay3.PublishRelay
+import com.sunykarasuno.networking.models.GatewayHeartbeat
+import com.sunykarasuno.networking.models.GatewayHello
 import com.sunykarasuno.networking.models.GatewayIdentify
-import com.sunykarasuno.networking.models.ReceivableGatewayEvent
 import com.sunykarasuno.networking.rest.DiscordService
+import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.functions.Consumer
+import io.reactivex.rxjava3.schedulers.Schedulers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class GatewayService(
     private val discordService: DiscordService,
@@ -25,6 +30,8 @@ class GatewayService(
         get() = relay
     private val gson = Gson()
     private var websSocket: WebSocket? = null
+    private val latestSequenceNumber = AtomicInteger(0)
+    private var sessionId: String? = null
 
     init {
         // TODO: Needs to be retried based on Discord's docs
@@ -52,15 +59,15 @@ class GatewayService(
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         super.onMessage(webSocket, text)
                         println("Got a message: $text")
-                        val message = gson.fromJson(
-                            text,
-                            ReceivableGatewayEvent::class.java
-                        )
+
+                        val json = JsonParser().parse(text).asJsonObject
 
                         // save sequence number of last event received
-                        when (message.code) {
+                        when (json.get("op").asInt) {
                             0 -> {
                                 // Dispatched message
+                                // get sequence
+                                latestSequenceNumber.set(json.get("s").asInt)
                             }
                             1 -> {
                                 println("Received heartbeat message")
@@ -74,6 +81,11 @@ class GatewayService(
                             }
                             10 -> {
                                 println("Received hello message")
+                                val heartbeatInterval = gson.fromJson(
+                                    text,
+                                    GatewayHello::class.java
+                                ).data.heartbeatInterval
+                                setHeartbeatInterval(heartbeatInterval)
                                 // TODO: Save hello message data
                                 webSocket.send(json(createIdentifyMessage()))
                                 // Hello, we need to ack back 1 after heartbeat seconds
@@ -124,6 +136,15 @@ class GatewayService(
                 )
             )
         )
+    }
+
+    private fun setHeartbeatInterval(interval: Int) {
+        val longInterval = interval.toLong()
+        Observable.interval(longInterval, longInterval, TimeUnit.MILLISECONDS, Schedulers.io())
+            .subscribe {
+                println("Sending heartbeat")
+                websSocket?.send(json(GatewayHeartbeat(latestSequenceNumber.get())))
+            }
     }
 
     private fun json(obj: Any): String {
