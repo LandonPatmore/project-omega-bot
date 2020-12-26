@@ -15,5 +15,6 @@ object Dependencies {
 
     object Plugins {
         const val SHADOW = "com.github.johnrengelman.shadow"
+        const val KTLINT = "org.jlleitschuh.gradle.ktlint"
     }
 }

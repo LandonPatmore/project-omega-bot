@@ -9,4 +9,6 @@ object Versions {
     const val SHADOW = "4.0.2"
     const val KOTLIN = "1.4.21"
     const val SCRIBE = "6.0.0"
+    const val KTLINT_PLUGIN = "9.4.1"
+    const val KTLINT = "0.40.0"
 }

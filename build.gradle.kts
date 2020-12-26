@@ -6,11 +6,11 @@ version = "1.0.0"
 plugins {
     kotlin("jvm") version Versions.KOTLIN
     id(Dependencies.Plugins.SHADOW) version Versions.SHADOW
-    id("org.jlleitschuh.gradle.ktlint") version "9.4.1"
+    id(Dependencies.Plugins.KTLINT) version Versions.KTLINT_PLUGIN
 }
 
 ktlint {
-    version.set("0.40.0")
+    version.set(Versions.KTLINT)
     reporters {
         reporter(ReporterType.JSON)
     }
@@ -25,6 +25,7 @@ ktlint {
 
 repositories {
     mavenCentral()
+    jcenter()
 }
 
 dependencies {
