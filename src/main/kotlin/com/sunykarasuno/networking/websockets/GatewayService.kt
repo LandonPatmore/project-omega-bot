@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class GatewayService(
-    private val discordService: DiscordService,
+    discordService: DiscordService,
     private val token: String
 ) : NetworkingProtocol {
 
