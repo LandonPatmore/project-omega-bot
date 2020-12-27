@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 data class GatewayIdentify(
     @SerializedName("d")
     val data: IdentificationInfo,
-    private val op: Int = 2
+    val op: Int = 2
 ) {
     data class IdentificationInfo(
         val token: String,

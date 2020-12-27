@@ -4,7 +4,6 @@ import com.google.gson.JsonObject
 
 class GatewayIntentInterpreter : Interpreter {
     override fun consumeIntent(type: String, data: JsonObject) {
-        TODO("Not yet implemented")
     }
 
     override fun consumeGuildGenericIntent() {
