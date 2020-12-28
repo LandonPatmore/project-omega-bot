@@ -12,4 +12,6 @@ object Versions {
     const val KTLINT_PLUGIN = "9.4.1"
     const val KTLINT = "0.40.0"
     const val OK_HTTP = "4.9.0"
+    const val LOGGING = "2.0.4"
+    const val SLF4J = "1.7.29"
 }

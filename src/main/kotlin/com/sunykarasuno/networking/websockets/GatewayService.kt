@@ -2,193 +2,206 @@ package com.sunykarasuno.networking.websockets
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import com.jakewharton.rxrelay3.PublishRelay
+import com.sunykarasuno.networking.NetworkingProtocol
 import com.sunykarasuno.networking.models.GatewayHeartbeat
 import com.sunykarasuno.networking.models.GatewayHeartbeatAck
 import com.sunykarasuno.networking.models.GatewayHello
 import com.sunykarasuno.networking.models.GatewayIdentify
-import com.sunykarasuno.networking.models.GatewayInvalid
 import com.sunykarasuno.networking.models.GatewayResume
 import com.sunykarasuno.networking.rest.DiscordService
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.functions.Consumer
-import io.reactivex.rxjava3.schedulers.Schedulers
+import com.sunykarasuno.utils.BotStatusController
+import com.sunykarasuno.utils.BotStatusService
+import com.sunykarasuno.utils.NetworkingExtensions.json
+import com.sunykarasuno.utils.models.BotStatus
+import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.Timer
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.fixedRateTimer
+import kotlin.concurrent.thread
+
+private val logger = KotlinLogging.logger {}
 
 class GatewayService(
     discordService: DiscordService,
     private val token: String,
-    private val gatewayIntentInterpreter: GatewayIntentInterpreter
+    private val gatewayIntentInterpreter: GatewayIntentInterpreter,
+    private val botStatusController: BotStatusController,
+    botStatusService: BotStatusService
 ) : NetworkingProtocol {
 
-    private val relay = PublishRelay.create<Any>()
-    override val networkController: Consumer<Any>
-        get() = relay
-    override val networkingService: PublishRelay<Any>
-        get() = relay
     private val gson = Gson()
     private var websSocket: WebSocket? = null
     private val latestSequenceNumber = AtomicInteger(0)
-    private var sessionId: String = ""
     private var ackReceived = AtomicBoolean(false)
+    private var heartbeatTimer: Timer? = null
+    private var connectionThread: Thread? = null
+
+    // TODO: Most likely want to move these to optionals
+    private var webSocketUrl: String = ""
+    private var sessionId: String = ""
 
     init {
         // TODO: Needs to be retried based on Discord's docs
         discordService.getGateway()?.let {
-            createConnection("${it.url}/?v=$VERSION")
-        } ?: println("Could not get gateway info")
+            webSocketUrl = "${it.url}/?v=$VERSION"
+            createConnection(webSocketUrl)
+        } ?: logger.debug { "Could not get gateway info" }
+
+        // if the bot shuts down from anywhere, make sure to close the webSocket appropriately
+        botStatusService.eventStream
+            .filter {
+                it == BotStatus.Shutdown
+            }.subscribe { closeConnection(DEFAULT_CLOSE_CODE) }
     }
 
     override fun createConnection(webSocketUrl: String) {
-        val client = OkHttpClient()
-            .newBuilder()
-            .connectTimeout(CONNECTION_TIMEOUT, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .build()
+        connectionThread?.interrupt()
+        connectionThread = thread(true) {
+            try {
+                websSocket = newHttpClient().newWebSocket(
+                    Request.Builder().url(webSocketUrl).build(),
+                    object : WebSocketListener() {
+                        override fun onOpen(webSocket: WebSocket, response: Response) {
+                            super.onOpen(webSocket, response)
+                            logger.debug { "Connection is open: $response" }
+                        }
 
-        try {
-            websSocket = client.newWebSocket(
-                Request.Builder().url(webSocketUrl).build(),
-                object : WebSocketListener() {
-                    override fun onOpen(webSocket: WebSocket, response: Response) {
-                        super.onOpen(webSocket, response)
-                        println("Connection is open: $response")
-                    }
+                        override fun onMessage(webSocket: WebSocket, text: String) {
+                            super.onMessage(webSocket, text)
+                            val json = JsonParser().parse(text).asJsonObject
 
-                    override fun onMessage(webSocket: WebSocket, text: String) {
-                        super.onMessage(webSocket, text)
-
-                        val json = JsonParser().parse(text).asJsonObject
-
-                        when (json.get("op").asInt) {
-                            0 -> {
-                                println("Got a dispatch message: $text")
-                                latestSequenceNumber.set(json.get("s").asInt)
-                                gatewayIntentInterpreter.consumeIntent(json.get("t").asString, json.get("d").asJsonObject)
-                            }
-                            1 -> {
-                                println("Received heartbeat message")
-                                websSocket?.send(json(GatewayHeartbeatAck()))
-                            }
-                            7 -> {
-                                println("Received reconnect message")
-                                resumeSequence()
-                            }
-                            9 -> {
-                                println("Received invalid session message")
-                                val invalid = gson.fromJson(
-                                    text,
-                                    GatewayInvalid::class.java
-                                )
-
-                                if (invalid.isResumable) {
+                            when (json.get("op").asInt) {
+                                0 -> {
+                                    logger.debug { "Got a dispatch message: $text" }
+                                    latestSequenceNumber.set(json.get("s").asInt)
+                                    if (json.get("t").asString == "READY") {
+                                        sessionId = json.get("d").asJsonObject.get("session_id").asString
+                                    }
+                                    gatewayIntentInterpreter.consumeIntent(
+                                        json.get("t").asString,
+                                        json.get("d").asJsonObject
+                                    )
+                                }
+                                1 -> {
+                                    logger.debug { "Received heartbeat message" }
+                                    websSocket?.json(GatewayHeartbeatAck())
+                                }
+                                7 -> {
+                                    logger.debug { "Received reconnect message" }
                                     resumeSequence()
-                                } else {
-                                    closeConnection(DEFAULT_CLOSE_CODE)
+                                }
+                                9 -> {
+                                    logger.debug { "Received invalid session message" }
+                                    if (json.get("d").asBoolean) {
+                                        resumeSequence()
+                                    } else {
+                                        closeConnection(DEFAULT_CLOSE_CODE)
+                                    }
+                                }
+                                10 -> {
+                                    logger.debug { "Received hello message" }
+                                    startSequence(text)
+                                    ackReceived.set(true)
+                                }
+                                11 -> {
+                                    logger.debug { "Received heartbeat ack message" }
+                                    ackReceived.set(true)
                                 }
                             }
-                            10 -> {
-                                println("Received hello message")
-                                startSequence(text)
-                            }
-                            11 -> {
-                                println("Received heartbeat ack message")
-                                ackReceived.set(true)
+                        }
+
+                        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                            super.onClosing(webSocket, code, reason)
+                            logger.debug { "Discord closed socket with code $code because: $reason" }
+                            when (code) {
+                                4000 -> createConnection(webSocketUrl)
+                                else -> shutdown(code)
                             }
                         }
-                    }
 
-                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                        super.onClosing(webSocket, code, reason)
+                        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                            super.onFailure(webSocket, t, response)
+                            shutdown(FAIL_CLOSE_CODE)
+                        }
                     }
-
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                        super.onClosed(webSocket, code, reason)
-                    }
-
-                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        super.onFailure(webSocket, t, response)
-                    }
-                }
-            )
-        } catch (e: Exception) {
-            // TODO: Need to consume this error, log it, and recreate the connection
+                )
+            } catch (e: Exception) {
+                logger.error(e) { "Exception was thrown" }
+                shutdown(FAIL_CLOSE_CODE)
+            }
         }
     }
 
     override fun closeConnection(closeCode: Int) {
         websSocket?.close(closeCode, "Connection closed with code: $closeCode")
-            ?: println("WebSocket could not be closed because it was not open")
-        // start back up, and send a gateway resume instead of identify
+            ?: logger.debug { "WebSocket could not be closed because it was not open" }
+    }
+
+    private fun shutdown(code: Int = DEFAULT_CLOSE_CODE) {
+        // TODO: Notify us somehow and shut the bot down
+        connectionThread?.interrupt()
+        closeConnection(code)
+        botStatusController.consumer.accept(BotStatus.Shutdown)
     }
 
     private fun startSequence(json: String) {
-        setHeartbeatInterval(
-            gson.fromJson(
-                json,
-                GatewayHello::class.java
-            ).data.heartbeatInterval
-        )
-        websSocket?.send(json(createIdentifyMessage()))
-    }
-
-    private fun resumeSequence() {
-        websSocket?.send(json(createResumeMessage()))
-    }
-
-    private fun createResumeMessage(): GatewayResume {
-        return GatewayResume(GatewayResume.ResumeInfo(token, sessionId, latestSequenceNumber.get()))
-    }
-
-    private fun createIdentifyMessage(): GatewayIdentify {
-        return GatewayIdentify(
-            GatewayIdentify.IdentificationInfo(
-                token,
-                INTENT,
-                GatewayIdentify.PropertiesInfo(
-                    OS,
-                    LIBRARY,
-                    LIBRARY
+        setHeartbeatInterval(gson.fromJson(json, GatewayHello::class.java).data.heartbeatInterval)
+        websSocket?.json(
+            GatewayIdentify(
+                GatewayIdentify.IdentificationInfo(
+                    token,
+                    INTENT_CODE,
+                    GatewayIdentify.PropertiesInfo(
+                        OS,
+                        LIBRARY,
+                        LIBRARY
+                    )
                 )
             )
         )
     }
 
-    private fun setHeartbeatInterval(interval: Int) {
-        // TODO: Need to be able to stop this, probably use a switch map that wraps this
-        val longInterval = interval.toLong()
-        Observable.interval(longInterval, longInterval, TimeUnit.MILLISECONDS, Schedulers.io())
-            .subscribe {
-                println("Sending heartbeat")
-                // TODO: Make sure ack was received, otherwise close connection since it is a zombie connection
-
-                if(ackReceived.get()) {
-                    websSocket?.send(json(GatewayHeartbeat(latestSequenceNumber.get())))
-                    ackReceived.set(false)
-                } else {
-                    closeConnection(ZOMBIE_CODE)
-                    // TODO: Stop interval
-                }
-            }
+    private fun resumeSequence() {
+        websSocket?.json(GatewayResume(GatewayResume.ResumeInfo(token, sessionId, latestSequenceNumber.get())))
     }
 
-    private fun json(obj: Any): String {
-        return gson.toJson(obj)
+    private fun setHeartbeatInterval(interval: Int) {
+        val longInterval = interval.toLong()
+        heartbeatTimer?.cancel()
+
+        heartbeatTimer = fixedRateTimer("HeartbeatInterval", false, longInterval, longInterval) {
+            if (ackReceived.get()) {
+                logger.debug { "Sending heartbeat" }
+                websSocket?.json(GatewayHeartbeat(latestSequenceNumber.get()))
+                ackReceived.set(false)
+            } else {
+                closeConnection(ZOMBIE_CLOSE_CODE)
+            }
+        }
+    }
+
+    private fun newHttpClient(): OkHttpClient {
+        return OkHttpClient()
+            .newBuilder()
+            .connectTimeout(CONNECTION_TIMEOUT, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
     }
 
     companion object {
-        private const val INTENT = 32735
+        private const val INTENT_CODE = 32719
         private const val VERSION = 8
         private const val CONNECTION_TIMEOUT = 30L
         private const val DEFAULT_CLOSE_CODE = 1000
-        private const val ZOMBIE_CODE = 42
+        private const val ZOMBIE_CLOSE_CODE = 4242
+        private const val FAIL_CLOSE_CODE = 4343
         private const val OS = "Linux"
         private const val LIBRARY = "Omega"
     }

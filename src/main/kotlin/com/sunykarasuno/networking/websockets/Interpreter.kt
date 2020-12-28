@@ -1,37 +1,34 @@
 package com.sunykarasuno.networking.websockets
 
 import com.google.gson.JsonObject
+import com.sunykarasuno.networking.websockets.models.Intent
 
 interface Interpreter {
     fun consumeIntent(type: String, data: JsonObject)
 
-    fun consumeGuildGenericIntent()
+    fun consumeGuildIntent(type: String, data: JsonObject) : Intent.Guild?
 
-    fun consumeRoleIntent()
+    fun consumeRoleIntent(type: String, data: JsonObject) : Intent.Roles?
 
-    fun consumeChannelIntent()
+    fun consumeChannelIntent(type: String, data: JsonObject) : Intent.Channels?
 
-    fun consumeMemberIntent()
+    fun consumeMemberIntent(type: String, data: JsonObject) : Intent.Members?
 
-    fun consumeBanIntent()
+    fun consumeBanIntent(type: String, data: JsonObject): Intent.Ban?
 
-    fun consumeEmojisIntent()
+    fun consumeEmojisIntent(type: String, data: JsonObject): Intent.Emojis?
 
-    fun consumeIntegrationsIntent()
+    fun consumeInvitesIntent(type: String, data: JsonObject): Intent.Invites?
 
-    fun consumeInvitesIntent()
+    fun consumeVoiceIntent(type: String, data: JsonObject): Intent.Voice?
 
-    fun consumeVoiceIntent()
+    fun consumePresenceIntent(type: String, data: JsonObject): Intent.Presences?
 
-    fun consumePresenceIntent()
+    fun consumeReactionIntent(type: String, data: JsonObject): Intent.Reactions?
 
-    fun consumeReactionIntent()
+    fun consumeTypingIntent(type: String, data: JsonObject): Intent.Typing?
 
-    fun consumeTypingIntent()
+    fun consumeMessageIntent(type: String, data: JsonObject): Intent.Messages?
 
-    fun consumeMessageIntent()
-
-    fun consumeDirectReaction()
-
-    fun consumeDirectTypingIntent()
+    fun consumeGenericIntent(type: String, data: JsonObject): Intent.Generic?
 }

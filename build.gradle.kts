@@ -50,4 +50,8 @@ dependencies {
     implementation(Dependencies.Bot.EXPOSED_CORE)
     implementation(Dependencies.Bot.EXPOSED_JDBC)
     implementation(Dependencies.Bot.EXPOSED_DAO)
+
+    // Logging
+    implementation(Dependencies.Bot.SLF4J)
+    implementation(Dependencies.Bot.LOGGING)
 }
