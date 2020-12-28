@@ -6,13 +6,13 @@ import com.sunykarasuno.networking.websockets.models.Intent
 interface Interpreter {
     fun consumeIntent(type: String, data: JsonObject)
 
-    fun consumeGuildIntent(type: String, data: JsonObject) : Intent.Guild?
+    fun consumeGuildIntent(type: String, data: JsonObject): Intent.Guild?
 
-    fun consumeRoleIntent(type: String, data: JsonObject) : Intent.Roles?
+    fun consumeRoleIntent(type: String, data: JsonObject): Intent.Roles?
 
-    fun consumeChannelIntent(type: String, data: JsonObject) : Intent.Channels?
+    fun consumeChannelIntent(type: String, data: JsonObject): Intent.Channels?
 
-    fun consumeMemberIntent(type: String, data: JsonObject) : Intent.Members?
+    fun consumeMemberIntent(type: String, data: JsonObject): Intent.Members?
 
     fun consumeBanIntent(type: String, data: JsonObject): Intent.Ban?
 

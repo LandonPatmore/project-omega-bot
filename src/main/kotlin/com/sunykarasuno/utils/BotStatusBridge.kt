@@ -16,11 +16,11 @@ class BotStatusBridge : BotStatusService, BotStatusController {
         get() = relay.doOnNext {
             logger.debug {
                 "Bot status: ${
-                    when (it) {
-                        BotStatus.Startup -> "Startup"
-                        BotStatus.Running -> "Running"
-                        BotStatus.Shutdown -> "Shutdown"
-                    }
+                when (it) {
+                    BotStatus.Startup -> "Startup"
+                    BotStatus.Running -> "Running"
+                    BotStatus.Shutdown -> "Shutdown"
+                }
                 }"
             }
         }

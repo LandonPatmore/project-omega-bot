@@ -14,19 +14,22 @@ import io.reactivex.rxjava3.functions.Consumer
 
 fun main() {
     // TODO: Set this properly for prod
-    System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG");
+    System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
     val d = DiscordService(System.getenv("TOKEN"))
     val q = PublishRelay.create<BotStatus>()
-    GatewayService(d, System.getenv("TOKEN"), GatewayIntentInterpreter(object : IntentController{
-        override val consumer: Consumer<Intent>
-            get() = PublishRelay.create()
-
-    }), object: BotStatusController {
-        override val consumer: Consumer<BotStatus>
-            get() = q
-    }, object : BotStatusService {
-        override val eventStream: Observable<BotStatus>
-            get() = q
-
-    })
+    GatewayService(
+        d, System.getenv("TOKEN"),
+        GatewayIntentInterpreter(object : IntentController {
+            override val consumer: Consumer<Intent>
+                get() = PublishRelay.create()
+        }),
+        object : BotStatusController {
+            override val consumer: Consumer<BotStatus>
+                get() = q
+        },
+        object : BotStatusService {
+            override val eventStream: Observable<BotStatus>
+                get() = q
+        }
+    )
 }
