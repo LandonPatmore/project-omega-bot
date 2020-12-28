@@ -8,6 +8,8 @@ data class Channel(
     val position: Int,
     val name: String,
     val nsfw: Boolean,
+    @SerializedName("guild_id")
+    val guildId: String?,
     @SerializedName("last_message_id")
-    val lastMessageId: String
+    val lastMessageId: String?
 )

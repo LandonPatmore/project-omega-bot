@@ -1,8 +1,16 @@
 package com.sunykarasuno.networking.websockets
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
+import com.sunykarasuno.networking.websockets.models.Channel
 import com.sunykarasuno.networking.websockets.models.Intent
+import com.sunykarasuno.networking.websockets.models.Member
+import com.sunykarasuno.networking.websockets.models.Message
+import com.sunykarasuno.networking.websockets.models.Presence
+import com.sunykarasuno.networking.websockets.models.Reaction
+import com.sunykarasuno.networking.websockets.models.User
+import com.sunykarasuno.utils.deserializers.ReadyDeserializer
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -54,19 +62,21 @@ class GatewayIntentInterpreter(private val intentController: IntentController) :
 
     override fun consumeChannelIntent(type: String, data: JsonObject): Intent.Channels? {
         return when (type) {
-            "CHANNEL_CREATE" -> gson.fromJson(data, Intent.Channels.Create::class.java)
-            "CHANNEL_UPDATE" -> gson.fromJson(data, Intent.Channels.Update::class.java)
-            "CHANNEL_DELETE" -> gson.fromJson(data, Intent.Channels.Delete::class.java)
-            "CHANNEL_PINS_UPDATE" -> gson.fromJson(data, Intent.Channels.PinsUpdate::class.java)
+            "CHANNEL_CREATE" -> Intent.Channels.Create(gson.fromJson(data, Channel::class.java))
+            "CHANNEL_UPDATE" -> Intent.Channels.Update(gson.fromJson(data, Channel::class.java))
+            "CHANNEL_DELETE" -> Intent.Channels.Delete(gson.fromJson(data, Channel::class.java))
             else -> null
         }
     }
 
     override fun consumeMemberIntent(type: String, data: JsonObject): Intent.Members? {
         return when (type) {
-            "GUILD_MEMBER_ADD" -> gson.fromJson(data, Intent.Members.Add::class.java)
-            "GUILD_MEMBER_UPDATE" -> gson.fromJson(data, Intent.Members.Update::class.java)
-            "GUILD_MEMBER_REMOVE" -> gson.fromJson(data, Intent.Members.Remove::class.java)
+            "GUILD_MEMBER_ADD" -> Intent.Members.Add(gson.fromJson(data, Member::class.java))
+            "GUILD_MEMBER_UPDATE" -> Intent.Members.Update(gson.fromJson(data, Member::class.java))
+            "GUILD_MEMBER_REMOVE" -> Intent.Members.Remove(
+                data.get("guild_id").asString,
+                gson.fromJson(data, User::class.java)
+            )
             else -> null
         }
     }
@@ -103,17 +113,15 @@ class GatewayIntentInterpreter(private val intentController: IntentController) :
 
     override fun consumePresenceIntent(type: String, data: JsonObject): Intent.Presences? {
         return when (type) {
-            "PRESENCE_UPDATE" -> gson.fromJson(data, Intent.Presences.Update::class.java)
+            "PRESENCE_UPDATE" -> Intent.Presences.Update(gson.fromJson(data, Presence::class.java))
             else -> null
         }
     }
 
     override fun consumeReactionIntent(type: String, data: JsonObject): Intent.Reactions? {
         return when (type) {
-            "MESSAGE_REACTION_ADD" -> gson.fromJson(data, Intent.Reactions.Add::class.java)
+            "MESSAGE_REACTION_ADD" -> Intent.Reactions.Add(gson.fromJson(data, Reaction::class.java))
             "MESSAGE_REACTION_REMOVE" -> gson.fromJson(data, Intent.Reactions.Remove::class.java)
-            "MESSAGE_REACTION_REMOVE_ALL" -> gson.fromJson(data, Intent.Reactions.RemoveAll::class.java)
-            "MESSAGE_REACTION_REMOVE_EMOJI" -> gson.fromJson(data, Intent.Reactions.RemoveEmoji::class.java)
             else -> null
         }
     }
@@ -127,17 +135,18 @@ class GatewayIntentInterpreter(private val intentController: IntentController) :
 
     override fun consumeMessageIntent(type: String, data: JsonObject): Intent.Messages? {
         return when (type) {
-            "MESSAGE_CREATE" -> gson.fromJson(data, Intent.Messages.Create::class.java)
-            "MESSAGE_UPDATE" -> gson.fromJson(data, Intent.Messages.Update::class.java)
+            "MESSAGE_CREATE" -> Intent.Messages.Create(gson.fromJson(data, Message::class.java))
+            "MESSAGE_UPDATE" -> Intent.Messages.Update(gson.fromJson(data, Message::class.java))
             "MESSAGE_DELETE" -> gson.fromJson(data, Intent.Messages.Delete::class.java)
-            "MESSAGE_PINS_UPDATE" -> gson.fromJson(data, Intent.Messages.PinsUpdate::class.java)
             else -> null
         }
     }
 
     override fun consumeGenericIntent(type: String, data: JsonObject): Intent.Generic? {
         return when (type) {
-            "READY" -> gson.fromJson(data, Intent.Generic.Ready::class.java)
+            "READY" -> GsonBuilder()
+                .registerTypeAdapter(Intent.Generic.Ready::class.java, ReadyDeserializer())
+                .create().fromJson(data, Intent.Generic.Ready::class.java)
             else -> null
         }
     }

@@ -2,7 +2,6 @@ package com.sunykarasuno.networking.websockets.models
 
 import com.google.gson.annotations.SerializedName
 
-// TODO: Will need custom Gson parsers
 sealed class Intent {
     sealed class Generic : Intent() {
         data class Ready(
@@ -11,8 +10,7 @@ sealed class Intent {
             val user: User,
             @SerializedName("session_id")
             val sessionId: String,
-            // TODO: Custom deserializer
-//            val guilds: List<String>,
+            val guilds: List<String>,
             val shard: List<Int>?
         ) : Generic()
     }
@@ -23,7 +21,6 @@ sealed class Intent {
             val name: String,
             val channels: List<Channel>,
             val roles: List<Role>,
-            val presences: List<Presence>,
             val members: List<Member>
         ) : Guild()
 
@@ -62,51 +59,15 @@ sealed class Intent {
     }
 
     sealed class Channels : Intent() {
-        data class Create(
-            @SerializedName("guild_id")
-            val guildId: String,
-            // TODO: Custom deserializer
-            val channel: Channel
-        ) : Channels()
-
-        data class Update(
-            @SerializedName("guild_id")
-            val guildId: String,
-            // TODO: Custom deserializer
-            val channel: Channel
-        ) : Channels()
-
-        data class Delete(
-            @SerializedName("channel_id")
-            val channelId: String,
-            @SerializedName("guild_id")
-            val guildId: String
-        ) : Channels()
-
-        @Deprecated("Not implemented yet", ReplaceWith(""), DeprecationLevel.WARNING)
-        object PinsUpdate : Channels()
+        data class Create(val channel: Channel) : Channels()
+        data class Update(val channel: Channel) : Channels()
+        data class Delete(val channel: Channel) : Channels()
     }
 
     sealed class Members : Intent() {
-        data class Add(
-            @SerializedName("guild_id")
-            val guildId: String,
-            val member: Member
-        ) : Members()
-
-        data class Update(
-            @SerializedName("guild_id")
-            val guildId: String,
-            // TODO: Custom deserializer
-            val member: Member
-        ) : Members()
-
-        data class Remove(
-            @SerializedName("guild_id")
-            val guildId: String,
-            // TODO: Custom deserializer
-            val member: Member
-        ) : Members()
+        data class Add(val member: Member) : Members()
+        data class Update(val member: Member) : Members()
+        data class Remove(val guildId: String, val user: User) : Members()
     }
 
     sealed class Ban : Intent() {
@@ -174,12 +135,10 @@ sealed class Intent {
     }
 
     sealed class Presences : Intent() {
-        // TODO: Custom deserializer
         data class Update(val presence: Presence) : Presences()
     }
 
     sealed class Reactions : Intent() {
-        // TODO: Custom deserializer
         data class Add(val reaction: Reaction) : Reactions()
 
         data class Remove(
@@ -193,12 +152,6 @@ sealed class Intent {
             @SerializedName("user_id")
             val userId: String
         ) : Reactions()
-
-        @Deprecated("Not implemented yet", ReplaceWith(""), DeprecationLevel.WARNING)
-        object RemoveAll : Reactions()
-
-        @Deprecated("Not implemented yet", ReplaceWith(""), DeprecationLevel.WARNING)
-        object RemoveEmoji : Reactions()
     }
 
     sealed class Typing : Intent() {
@@ -210,15 +163,12 @@ sealed class Intent {
             @SerializedName("user_id")
             val userId: String,
             val timestamp: Int,
-            // TODO: Could be null if a DM
             val member: Member?
         ) : Typing()
     }
 
     sealed class Messages : Intent() {
-        // TODO: Custom deserializer
         data class Create(val message: Message) : Messages()
-        // TODO: Custom deserializer
         data class Update(val message: Message) : Messages()
         data class Delete(
             val id: String,
@@ -227,8 +177,5 @@ sealed class Intent {
             @SerializedName("channel_id")
             val channelId: String
         ) : Messages()
-
-        @Deprecated("Not implemented yet", ReplaceWith(""), DeprecationLevel.WARNING)
-        object PinsUpdate : Messages()
     }
 }
