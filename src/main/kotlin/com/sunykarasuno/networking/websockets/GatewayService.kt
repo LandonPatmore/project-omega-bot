@@ -58,6 +58,7 @@ class GatewayService(
     override fun createConnection(url: String) {
         connectionThread?.interrupt()
 
+        // TODO: Move this out once there is a way to start web socket from somewhere else to pass the url in
         discordService.getGateway()?.let {
             webSocketUrl = "${it.url}/?v=$VERSION"
         } ?: run {
@@ -121,7 +122,7 @@ class GatewayService(
                             super.onClosing(webSocket, code, reason)
                             logger.debug { "Discord closed socket with code $code because: $reason" }
                             when (code) {
-                                4000 -> createConnection(url)
+                                4000 -> createConnection(webSocketUrl)
                                 else -> shutdown(code)
                             }
                         }
