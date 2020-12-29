@@ -1,3 +1,5 @@
 package com.sunykarasuno.networking.websockets.models
 
-sealed class MessageType
+data class HeartbeatAck(
+    val op: Int = 11
+)

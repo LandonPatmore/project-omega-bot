@@ -1,8 +1,8 @@
-package com.sunykarasuno.networking.models
+package com.sunykarasuno.networking.websockets.models
 
 import com.google.gson.annotations.SerializedName
 
-data class GatewayInfo(
+data class Info(
     val url: String,
     val shards: Int,
     val sessionStartLimit: SessionStartLimit

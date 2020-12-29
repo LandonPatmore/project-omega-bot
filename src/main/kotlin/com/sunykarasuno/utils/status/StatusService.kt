@@ -1,8 +1,8 @@
-package com.sunykarasuno.utils
+package com.sunykarasuno.utils.status
 
 import com.sunykarasuno.utils.models.BotStatus
 import io.reactivex.rxjava3.core.Observable
 
-interface BotStatusService {
+interface StatusService {
     val eventStream: Observable<BotStatus>
 }

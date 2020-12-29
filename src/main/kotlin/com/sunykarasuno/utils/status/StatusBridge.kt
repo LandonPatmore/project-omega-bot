@@ -1,4 +1,4 @@
-package com.sunykarasuno.utils
+package com.sunykarasuno.utils.status
 
 import com.jakewharton.rxrelay3.PublishRelay
 import com.sunykarasuno.utils.models.BotStatus
@@ -8,7 +8,7 @@ import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
-class BotStatusBridge : BotStatusService, BotStatusController {
+class StatusBridge : StatusService, StatusController {
     private val relay = PublishRelay.create<BotStatus>()
     override val consumer: Consumer<BotStatus>
         get() = relay

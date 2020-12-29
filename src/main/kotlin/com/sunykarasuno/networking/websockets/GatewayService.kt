@@ -1,18 +1,19 @@
 package com.sunykarasuno.networking.websockets
 
 import com.google.gson.Gson
-import com.google.gson.JsonParser
 import com.sunykarasuno.networking.NetworkingProtocol
-import com.sunykarasuno.networking.models.GatewayHeartbeat
-import com.sunykarasuno.networking.models.GatewayHeartbeatAck
-import com.sunykarasuno.networking.models.GatewayHello
-import com.sunykarasuno.networking.models.GatewayIdentify
-import com.sunykarasuno.networking.models.GatewayResume
 import com.sunykarasuno.networking.rest.DiscordService
-import com.sunykarasuno.utils.BotStatusController
-import com.sunykarasuno.utils.BotStatusService
-import com.sunykarasuno.utils.NetworkingExtensions.json
+import com.sunykarasuno.networking.websockets.intents.GatewayIntentInterpreter
+import com.sunykarasuno.networking.websockets.models.Heartbeat
+import com.sunykarasuno.networking.websockets.models.HeartbeatAck
+import com.sunykarasuno.networking.websockets.models.Hello
+import com.sunykarasuno.networking.websockets.models.Identify
+import com.sunykarasuno.networking.websockets.models.ReceivableGatewayEvent
+import com.sunykarasuno.networking.websockets.models.Resume
+import com.sunykarasuno.utils.extensions.NetworkingExtensions.json
 import com.sunykarasuno.utils.models.BotStatus
+import com.sunykarasuno.utils.status.StatusController
+import com.sunykarasuno.utils.status.StatusService
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,10 +33,9 @@ class GatewayService(
     discordService: DiscordService,
     private val token: String,
     private val gatewayIntentInterpreter: GatewayIntentInterpreter,
-    private val botStatusController: BotStatusController,
-    botStatusService: BotStatusService
+    private val statusController: StatusController,
+    statusService: StatusService
 ) : NetworkingProtocol {
-
     private val gson = Gson()
     private var websSocket: WebSocket? = null
     private val latestSequenceNumber = AtomicInteger(0)
@@ -48,25 +48,24 @@ class GatewayService(
     private var sessionId: String = ""
 
     init {
-        // TODO: Needs to be retried based on Discord's docs
         discordService.getGateway()?.let {
             webSocketUrl = "${it.url}/?v=$VERSION"
             createConnection(webSocketUrl)
         } ?: logger.debug { "Could not get gateway info" }
 
         // if the bot shuts down from anywhere, make sure to close the webSocket appropriately
-        botStatusService.eventStream
+        statusService.eventStream
             .filter {
                 it == BotStatus.Shutdown
             }.subscribe { closeConnection(DEFAULT_CLOSE_CODE) }
     }
 
-    override fun createConnection(webSocketUrl: String) {
+    override fun createConnection(url: String) {
         connectionThread?.interrupt()
         connectionThread = thread(true) {
             try {
                 websSocket = newHttpClient().newWebSocket(
-                    Request.Builder().url(webSocketUrl).build(),
+                    Request.Builder().url(url).build(),
                     object : WebSocketListener() {
                         override fun onOpen(webSocket: WebSocket, response: Response) {
                             super.onOpen(webSocket, response)
@@ -75,23 +74,20 @@ class GatewayService(
 
                         override fun onMessage(webSocket: WebSocket, text: String) {
                             super.onMessage(webSocket, text)
-                            val json = JsonParser().parse(text).asJsonObject
+                            val json = gson.fromJson(text, ReceivableGatewayEvent::class.java)
 
-                            when (json.get("op").asInt) {
+                            when (json.code) {
                                 0 -> {
                                     logger.debug { "Got a dispatch message: $text" }
-                                    latestSequenceNumber.set(json.get("s").asInt)
-                                    if (json.get("t").asString == "READY") {
-                                        sessionId = json.get("d").asJsonObject.get("session_id").asString
+                                    latestSequenceNumber.set(json.sequence)
+                                    if (json.type == "READY") {
+                                        sessionId = json.data.get("session_id").asString
                                     }
-                                    gatewayIntentInterpreter.consumeIntent(
-                                        json.get("t").asString,
-                                        json.get("d").asJsonObject
-                                    )
+                                    gatewayIntentInterpreter.consumeIntent(json.type, json.data)
                                 }
                                 1 -> {
                                     logger.debug { "Received heartbeat message" }
-                                    websSocket?.json(GatewayHeartbeatAck())
+                                    websSocket?.json(HeartbeatAck())
                                 }
                                 7 -> {
                                     logger.debug { "Received reconnect message" }
@@ -99,7 +95,7 @@ class GatewayService(
                                 }
                                 9 -> {
                                     logger.debug { "Received invalid session message" }
-                                    if (json.get("d").asBoolean) {
+                                    if (json.data.asBoolean) {
                                         resumeSequence()
                                     } else {
                                         closeConnection(DEFAULT_CLOSE_CODE)
@@ -121,7 +117,7 @@ class GatewayService(
                             super.onClosing(webSocket, code, reason)
                             logger.debug { "Discord closed socket with code $code because: $reason" }
                             when (code) {
-                                4000 -> createConnection(webSocketUrl)
+                                4000 -> createConnection(url)
                                 else -> shutdown(code)
                             }
                         }
@@ -148,17 +144,17 @@ class GatewayService(
         // TODO: Notify us somehow and shut the bot down
         connectionThread?.interrupt()
         closeConnection(code)
-        botStatusController.consumer.accept(BotStatus.Shutdown)
+        statusController.consumer.accept(BotStatus.Shutdown)
     }
 
     private fun startSequence(json: String) {
-        setHeartbeatInterval(gson.fromJson(json, GatewayHello::class.java).data.heartbeatInterval)
+        setHeartbeatInterval(gson.fromJson(json, Hello::class.java).data.heartbeatInterval)
         websSocket?.json(
-            GatewayIdentify(
-                GatewayIdentify.IdentificationInfo(
+            Identify(
+                Identify.IdentificationInfo(
                     token,
                     INTENT_CODE,
-                    GatewayIdentify.PropertiesInfo(
+                    Identify.PropertiesInfo(
                         OS,
                         LIBRARY,
                         LIBRARY
@@ -169,7 +165,7 @@ class GatewayService(
     }
 
     private fun resumeSequence() {
-        websSocket?.json(GatewayResume(GatewayResume.ResumeInfo(token, sessionId, latestSequenceNumber.get())))
+        websSocket?.json(Resume(Resume.ResumeInfo(token, sessionId, latestSequenceNumber.get())))
     }
 
     private fun setHeartbeatInterval(interval: Int) {
@@ -179,7 +175,7 @@ class GatewayService(
         heartbeatTimer = fixedRateTimer("HeartbeatInterval", false, longInterval, longInterval) {
             if (ackReceived.get()) {
                 logger.debug { "Sending heartbeat" }
-                websSocket?.json(GatewayHeartbeat(latestSequenceNumber.get()))
+                websSocket?.json(Heartbeat(latestSequenceNumber.get()))
                 ackReceived.set(false)
             } else {
                 closeConnection(ZOMBIE_CLOSE_CODE)

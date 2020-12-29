@@ -1,8 +1,8 @@
-package com.sunykarasuno.networking.models
+package com.sunykarasuno.networking.websockets.models
 
 import com.google.gson.annotations.SerializedName
 
-data class GatewayResume(
+data class Resume(
     @SerializedName("d")
     val data: ResumeInfo,
     val op: Int = 6

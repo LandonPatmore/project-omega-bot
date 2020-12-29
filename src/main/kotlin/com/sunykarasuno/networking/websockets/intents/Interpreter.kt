@@ -1,7 +1,7 @@
-package com.sunykarasuno.networking.websockets
+package com.sunykarasuno.networking.websockets.intents
 
 import com.google.gson.JsonObject
-import com.sunykarasuno.networking.websockets.models.Intent
+import com.sunykarasuno.models.Intent
 
 interface Interpreter {
     fun consumeIntent(type: String, data: JsonObject)

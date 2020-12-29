@@ -5,9 +5,9 @@ import com.google.gson.JsonDeserializationContext
 import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.sunykarasuno.networking.websockets.models.Presence
-import com.sunykarasuno.networking.websockets.models.Status
-import com.sunykarasuno.networking.websockets.models.User
+import com.sunykarasuno.models.Presence
+import com.sunykarasuno.models.Status
+import com.sunykarasuno.models.User
 import java.lang.reflect.Type
 
 class PresenceDeserializer : JsonDeserializer<Presence> {

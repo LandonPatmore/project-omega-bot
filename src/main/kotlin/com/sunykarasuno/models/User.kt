@@ -1,4 +1,4 @@
-package com.sunykarasuno.networking.websockets.models
+package com.sunykarasuno.models
 
 data class User(
     val id: String,

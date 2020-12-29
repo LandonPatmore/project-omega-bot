@@ -1,6 +1,6 @@
-package com.sunykarasuno.networking.websockets
+package com.sunykarasuno.networking.websockets.intents
 
-import com.sunykarasuno.networking.websockets.models.Intent
+import com.sunykarasuno.models.Intent
 import io.reactivex.rxjava3.functions.Consumer
 
 interface IntentController {

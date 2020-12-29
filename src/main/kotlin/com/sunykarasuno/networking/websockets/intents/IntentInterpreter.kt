@@ -1,15 +1,16 @@
-package com.sunykarasuno.networking.websockets
+package com.sunykarasuno.networking.websockets.intents
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
-import com.sunykarasuno.networking.websockets.models.Channel
-import com.sunykarasuno.networking.websockets.models.Intent
-import com.sunykarasuno.networking.websockets.models.Member
-import com.sunykarasuno.networking.websockets.models.Message
-import com.sunykarasuno.networking.websockets.models.Presence
-import com.sunykarasuno.networking.websockets.models.Reaction
-import com.sunykarasuno.networking.websockets.models.User
+import com.sunykarasuno.models.Channel
+import com.sunykarasuno.models.Intent
+import com.sunykarasuno.models.Member
+import com.sunykarasuno.models.Message
+import com.sunykarasuno.models.Presence
+import com.sunykarasuno.models.Reaction
+import com.sunykarasuno.models.User
+import com.sunykarasuno.utils.deserializers.PresenceDeserializer
 import com.sunykarasuno.utils.deserializers.ReadyDeserializer
 import mu.KotlinLogging
 
@@ -113,7 +114,10 @@ class GatewayIntentInterpreter(private val intentController: IntentController) :
 
     override fun consumePresenceIntent(type: String, data: JsonObject): Intent.Presences? {
         return when (type) {
-            "PRESENCE_UPDATE" -> Intent.Presences.Update(gson.fromJson(data, Presence::class.java))
+            "PRESENCE_UPDATE" -> Intent.Presences.Update(
+                GsonBuilder().registerTypeAdapter(Presence::class.java, PresenceDeserializer())
+                    .create().fromJson(data, Presence::class.java)
+            )
             else -> null
         }
     }

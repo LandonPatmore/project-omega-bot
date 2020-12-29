@@ -1,6 +1,6 @@
 package com.sunykarasuno.networking.rest
 
-import com.sunykarasuno.networking.models.GatewayInfo
+import com.sunykarasuno.networking.websockets.models.Info
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -17,7 +17,7 @@ class DiscordService(
         ).addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    fun getGateway(): GatewayInfo? {
+    fun getGateway(): Info? {
         val discordApi = retrofit.create(DiscordApi::class.java)
         val response = discordApi.getGatewayInfo().execute()
 

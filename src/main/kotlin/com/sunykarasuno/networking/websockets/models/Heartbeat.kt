@@ -1,8 +1,8 @@
-package com.sunykarasuno.networking.models
+package com.sunykarasuno.networking.websockets.models
 
 import com.google.gson.annotations.SerializedName
 
-data class GatewayHeartbeat(
+data class Heartbeat(
     @SerializedName("d")
     val sequenceNumber: Int,
     val op: Int = 1

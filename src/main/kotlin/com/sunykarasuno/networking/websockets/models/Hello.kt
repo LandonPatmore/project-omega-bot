@@ -1,8 +1,8 @@
-package com.sunykarasuno.networking.models
+package com.sunykarasuno.networking.websockets.models
 
 import com.google.gson.annotations.SerializedName
 
-data class GatewayHello(
+data class Hello(
     @SerializedName("op")
     val code: Int,
     @SerializedName("d")

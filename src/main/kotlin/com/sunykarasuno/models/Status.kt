@@ -1,4 +1,4 @@
-package com.sunykarasuno.networking.websockets.models
+package com.sunykarasuno.models
 
 sealed class Status {
     object Online : Status()

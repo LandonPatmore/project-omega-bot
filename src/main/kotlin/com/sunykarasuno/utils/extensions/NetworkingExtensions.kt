@@ -1,4 +1,4 @@
-package com.sunykarasuno.utils
+package com.sunykarasuno.utils.extensions
 
 import com.google.gson.Gson
 import okhttp3.WebSocket

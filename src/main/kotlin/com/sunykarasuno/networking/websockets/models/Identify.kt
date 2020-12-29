@@ -1,8 +1,8 @@
-package com.sunykarasuno.networking.models
+package com.sunykarasuno.networking.websockets.models
 
 import com.google.gson.annotations.SerializedName
 
-data class GatewayIdentify(
+data class Identify(
     @SerializedName("d")
     val data: IdentificationInfo,
     val op: Int = 2
