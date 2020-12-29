@@ -30,7 +30,7 @@ import kotlin.concurrent.thread
 private val logger = KotlinLogging.logger {}
 
 class GatewayService(
-    discordService: DiscordService,
+    private val discordService: DiscordService,
     private val token: String,
     private val gatewayIntentInterpreter: GatewayIntentInterpreter,
     private val statusController: StatusController,
@@ -48,11 +48,6 @@ class GatewayService(
     private var sessionId: String = ""
 
     init {
-        discordService.getGateway()?.let {
-            webSocketUrl = "${it.url}/?v=$VERSION"
-            createConnection(webSocketUrl)
-        } ?: logger.debug { "Could not get gateway info" }
-
         // if the bot shuts down from anywhere, make sure to close the webSocket appropriately
         statusService.eventStream
             .filter {
@@ -62,6 +57,15 @@ class GatewayService(
 
     override fun createConnection(url: String) {
         connectionThread?.interrupt()
+
+        discordService.getGateway()?.let {
+            webSocketUrl = "${it.url}/?v=$VERSION"
+        } ?: run {
+            logger.debug { "Could not get gateway info" }
+            statusController.consumer.accept(BotStatus.Shutdown)
+            return
+        }
+
         connectionThread = thread(true) {
             try {
                 websSocket = newHttpClient().newWebSocket(
