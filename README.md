@@ -6,7 +6,7 @@ This repo pertains to Project Omega.
 ```
 docker pull ljp1203/project-omega-bot:latest
 sudo docker run <IAMGE_ID> // interactive
-sudo docker run -d <IAMGE_ID> //detached background
+sudo docker run -d -e BOT_TOKEN=<BOT_TOKEN> <IAMGE_ID> //detached background
 ```
 
 ## License
