@@ -13,6 +13,9 @@ object Dependencies {
         const val EXPOSED_JDBC = "org.jetbrains.exposed:exposed-jdbc:${Versions.EXPOSED}"
         const val OK_HTTP = "com.squareup.okhttp3:okhttp:${Versions.OK_HTTP}"
         const val RETROFIT_GSON = "com.squareup.retrofit2:converter-gson:${Versions.RETROFIT}"
+        const val LOGGING = "io.github.microutils:kotlin-logging-jvm:${Versions.LOGGING}"
+        const val SLF4J = "org.slf4j:slf4j-simple:${Versions.SLF4J}"
+        const val KOTLIN_REFLECT = "org.jetbrains.kotlin:kotlin-reflect:${Versions.KOTLIN_REFLECT}"
     }
 
     object Plugins {
