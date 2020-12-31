@@ -15,6 +15,7 @@ object Dependencies {
         const val RETROFIT_GSON = "com.squareup.retrofit2:converter-gson:${Versions.RETROFIT}"
         const val LOGGING = "io.github.microutils:kotlin-logging-jvm:${Versions.LOGGING}"
         const val SLF4J = "org.slf4j:slf4j-simple:${Versions.SLF4J}"
+        const val KOTLIN_REFLECT = "org.jetbrains.kotlin:kotlin-reflect:${Versions.KOTLIN_REFLECT}"
     }
 
     object Plugins {

@@ -1,6 +1,7 @@
 package com.sunykarasuno.networking.websockets
 
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.sunykarasuno.networking.NetworkingProtocol
 import com.sunykarasuno.networking.rest.DiscordService
 import com.sunykarasuno.networking.websockets.intents.GatewayIntentInterpreter
@@ -37,9 +38,10 @@ class GatewayService(
     statusService: StatusService
 ) : NetworkingProtocol {
     private val gson = Gson()
+    private val jsonParser = JsonParser()
     private var websSocket: WebSocket? = null
     private val latestSequenceNumber = AtomicInteger(0)
-    private var ackReceived = AtomicBoolean(false)
+    private var ackReceived = AtomicBoolean(true)
     private var heartbeatTimer: Timer? = null
     private var connectionThread: Thread? = null
 
@@ -70,7 +72,7 @@ class GatewayService(
         connectionThread = thread(true) {
             try {
                 websSocket = newHttpClient().newWebSocket(
-                    Request.Builder().url(url).build(),
+                    Request.Builder().url(webSocketUrl).build(),
                     object : WebSocketListener() {
                         override fun onOpen(webSocket: WebSocket, response: Response) {
                             super.onOpen(webSocket, response)
@@ -79,40 +81,31 @@ class GatewayService(
 
                         override fun onMessage(webSocket: WebSocket, text: String) {
                             super.onMessage(webSocket, text)
-                            val json = gson.fromJson(text, ReceivableGatewayEvent::class.java)
+                            logger.debug { "Got a message: $text" }
 
-                            when (json.code) {
+                            when (jsonParser.parse(text).asJsonObject.get("op").asInt) {
                                 0 -> {
-                                    logger.debug { "Got a dispatch message: $text" }
-                                    latestSequenceNumber.set(json.sequence)
-                                    if (json.type == "READY") {
-                                        sessionId = json.data.get("session_id").asString
-                                    }
-                                    gatewayIntentInterpreter.consumeIntent(json.type, json.data)
+                                    logger.info { "Got a dispatch message: $text" }
+                                    handleDispatch(text)
                                 }
                                 1 -> {
-                                    logger.debug { "Received heartbeat message" }
+                                    logger.info { "Received heartbeat message" }
                                     websSocket?.json(HeartbeatAck())
                                 }
                                 7 -> {
-                                    logger.debug { "Received reconnect message" }
+                                    logger.info { "Received reconnect message" }
                                     resumeSequence()
                                 }
                                 9 -> {
-                                    logger.debug { "Received invalid session message" }
-                                    if (json.data.asBoolean) {
-                                        resumeSequence()
-                                    } else {
-                                        closeConnection(DEFAULT_CLOSE_CODE)
-                                    }
+                                    logger.info { "Received invalid session message" }
+                                    handleInvalidSession(text)
                                 }
                                 10 -> {
-                                    logger.debug { "Received hello message" }
+                                    logger.info { "Received hello message" }
                                     startSequence(text)
-                                    ackReceived.set(true)
                                 }
                                 11 -> {
-                                    logger.debug { "Received heartbeat ack message" }
+                                    logger.info { "Received heartbeat ack message" }
                                     ackReceived.set(true)
                                 }
                             }
@@ -127,8 +120,15 @@ class GatewayService(
                             }
                         }
 
+                        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                            super.onClosed(webSocket, code, reason)
+                            logger.debug { "Closed because: $reason" }
+                            shutdown(FAIL_CLOSE_CODE)
+                        }
+
                         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                             super.onFailure(webSocket, t, response)
+                            logger.error(t) { "WebSocket failure" }
                             shutdown(FAIL_CLOSE_CODE)
                         }
                     }
@@ -141,14 +141,13 @@ class GatewayService(
     }
 
     override fun closeConnection(closeCode: Int) {
-        websSocket?.close(closeCode, "Connection closed with code: $closeCode")
+        websSocket?.close(closeCode, "code: $closeCode")
             ?: logger.debug { "WebSocket could not be closed because it was not open" }
     }
 
     private fun shutdown(code: Int = DEFAULT_CLOSE_CODE) {
         // TODO: Notify us somehow and shut the bot down
         connectionThread?.interrupt()
-        closeConnection(code)
         statusController.consumer.accept(BotStatus.Shutdown)
     }
 
@@ -183,8 +182,29 @@ class GatewayService(
                 websSocket?.json(Heartbeat(latestSequenceNumber.get()))
                 ackReceived.set(false)
             } else {
+                logger.debug { "Closing because of zombie connection" }
                 closeConnection(ZOMBIE_CLOSE_CODE)
             }
+        }
+    }
+
+    private fun handleDispatch(text: String) {
+        val json = gson.fromJson(text, ReceivableGatewayEvent::class.java)
+
+        latestSequenceNumber.set(json.sequence)
+        if (json.type == "READY") {
+            sessionId = json.data.get("session_id").asString
+        }
+        gatewayIntentInterpreter.consumeIntent(json.type, json.data)
+    }
+
+    private fun handleInvalidSession(text: String) {
+        val json = gson.fromJson(text, ReceivableGatewayEvent::class.java)
+
+        if (json.data.asBoolean) {
+            resumeSequence()
+        } else {
+            closeConnection(DEFAULT_CLOSE_CODE)
         }
     }
 

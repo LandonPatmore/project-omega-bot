@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 group = "com.sunykarasuno"
@@ -7,6 +8,14 @@ plugins {
     kotlin("jvm") version Versions.KOTLIN
     id(Dependencies.Plugins.SHADOW) version Versions.SHADOW
     id(Dependencies.Plugins.KTLINT) version Versions.KTLINT_PLUGIN
+}
+
+tasks {
+    named<ShadowJar>("shadowJar") {
+        manifest {
+            attributes(mapOf("Main-Class" to "com.sunykarasuno.MainKt"))
+        }
+    }
 }
 
 ktlint {
@@ -30,6 +39,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation(Dependencies.Bot.KOTLIN_REFLECT) // fixes classpath issue when creating JAR
 
     // Rx
     implementation(Dependencies.Bot.RX_JAVA)

@@ -17,7 +17,7 @@ fun main() {
     System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
     val d = DiscordService(System.getenv("TOKEN"))
     val q = PublishRelay.create<BotStatus>()
-    GatewayService(
+    val g = GatewayService(
         d, System.getenv("TOKEN"),
         GatewayIntentInterpreter(object : IntentController {
             override val consumer: Consumer<Intent>
@@ -32,4 +32,5 @@ fun main() {
                 get() = q
         }
     )
+    g.createConnection()
 }
