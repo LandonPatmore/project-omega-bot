@@ -1,6 +1,14 @@
 # project-omega-bot
 This repo pertains to Project Omega.
 
+# How to run
+
+```
+docker pull ljp1203/project-omega-bot:latest
+sudo docker run <IAMGE_ID> // interactive
+sudo docker run -d <IAMGE_ID> //detached background
+```
+
 ## License
 ```
 MIT License
