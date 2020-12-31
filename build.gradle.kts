@@ -12,6 +12,7 @@ plugins {
 
 tasks {
     named<ShadowJar>("shadowJar") {
+        archiveFileName.set("omega.jar")
         manifest {
             attributes(mapOf("Main-Class" to "com.sunykarasuno.MainKt"))
         }
