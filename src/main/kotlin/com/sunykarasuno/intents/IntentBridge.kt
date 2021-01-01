@@ -1,7 +1,7 @@
-package com.sunykarasuno.networking.websockets.intents
+package com.sunykarasuno.intents
 
 import com.jakewharton.rxrelay3.PublishRelay
-import com.sunykarasuno.models.Intent
+import com.sunykarasuno.intents.models.Intent
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.functions.Consumer
 

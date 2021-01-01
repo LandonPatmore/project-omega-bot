@@ -8,7 +8,7 @@ import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
-class StatusBridge : StatusService, StatusController {
+class BotStatusBridge : BotStatusService, BotStatusController {
     private val relay = PublishRelay.create<BotStatus>()
     override val consumer: Consumer<BotStatus>
         get() = relay
@@ -17,7 +17,6 @@ class StatusBridge : StatusService, StatusController {
             logger.debug {
                 "Bot status: ${
                 when (it) {
-                    BotStatus.Startup -> "Startup"
                     BotStatus.Running -> "Running"
                     BotStatus.Shutdown -> "Shutdown"
                 }

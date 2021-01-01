@@ -1,15 +1,15 @@
-package com.sunykarasuno.networking.websockets.intents
+package com.sunykarasuno.intents
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
-import com.sunykarasuno.models.Channel
-import com.sunykarasuno.models.Intent
-import com.sunykarasuno.models.Member
-import com.sunykarasuno.models.Message
-import com.sunykarasuno.models.Presence
-import com.sunykarasuno.models.Reaction
-import com.sunykarasuno.models.User
+import com.sunykarasuno.intents.models.Channel
+import com.sunykarasuno.intents.models.Intent
+import com.sunykarasuno.intents.models.Member
+import com.sunykarasuno.intents.models.Message
+import com.sunykarasuno.intents.models.Presence
+import com.sunykarasuno.intents.models.Reaction
+import com.sunykarasuno.intents.models.User
 import com.sunykarasuno.utils.deserializers.PresenceDeserializer
 import com.sunykarasuno.utils.deserializers.ReadyDeserializer
 import mu.KotlinLogging

@@ -1,4 +1,4 @@
-package com.sunykarasuno.models
+package com.sunykarasuno.intents.models
 
 import com.google.gson.annotations.SerializedName
 

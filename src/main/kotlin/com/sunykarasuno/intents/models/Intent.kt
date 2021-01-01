@@ -1,4 +1,4 @@
-package com.sunykarasuno.models
+package com.sunykarasuno.intents.models
 
 import com.google.gson.annotations.SerializedName
 
@@ -7,6 +7,7 @@ sealed class Intent {
         data class Ready(
             @SerializedName("v")
             val version: Int,
+            val id: String,
             val user: User,
             @SerializedName("session_id")
             val sessionId: String,

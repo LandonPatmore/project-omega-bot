@@ -4,7 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.sunykarasuno.networking.NetworkingProtocol
 import com.sunykarasuno.networking.rest.DiscordService
-import com.sunykarasuno.networking.websockets.intents.GatewayIntentInterpreter
+import com.sunykarasuno.intents.GatewayIntentInterpreter
 import com.sunykarasuno.networking.websockets.models.Heartbeat
 import com.sunykarasuno.networking.websockets.models.HeartbeatAck
 import com.sunykarasuno.networking.websockets.models.Hello
@@ -13,8 +13,8 @@ import com.sunykarasuno.networking.websockets.models.ReceivableGatewayEvent
 import com.sunykarasuno.networking.websockets.models.Resume
 import com.sunykarasuno.utils.extensions.NetworkingExtensions.json
 import com.sunykarasuno.utils.models.BotStatus
-import com.sunykarasuno.utils.status.StatusController
-import com.sunykarasuno.utils.status.StatusService
+import com.sunykarasuno.utils.status.BotStatusController
+import com.sunykarasuno.utils.status.BotStatusService
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -34,8 +34,8 @@ class GatewayService(
     private val discordService: DiscordService,
     private val token: String,
     private val gatewayIntentInterpreter: GatewayIntentInterpreter,
-    private val statusController: StatusController,
-    statusService: StatusService
+    private val botStatusController: BotStatusController,
+    botStatusService: BotStatusService
 ) : NetworkingProtocol {
     private val gson = Gson()
     private val jsonParser = JsonParser()
@@ -51,7 +51,7 @@ class GatewayService(
 
     init {
         // if the bot shuts down from anywhere, make sure to close the webSocket appropriately
-        statusService.eventStream
+        botStatusService.eventStream
             .filter {
                 it == BotStatus.Shutdown
             }.subscribe { closeConnection(DEFAULT_CLOSE_CODE) }
@@ -65,7 +65,7 @@ class GatewayService(
             webSocketUrl = "${it.url}/?v=$VERSION"
         } ?: run {
             logger.debug { "Could not get gateway info" }
-            statusController.consumer.accept(BotStatus.Shutdown)
+            botStatusController.consumer.accept(BotStatus.Shutdown)
             return
         }
 
@@ -148,7 +148,7 @@ class GatewayService(
     private fun shutdown(code: Int = DEFAULT_CLOSE_CODE) {
         // TODO: Notify us somehow and shut the bot down
         connectionThread?.interrupt()
-        statusController.consumer.accept(BotStatus.Shutdown)
+        botStatusController.consumer.accept(BotStatus.Shutdown)
     }
 
     private fun startSequence(json: String) {

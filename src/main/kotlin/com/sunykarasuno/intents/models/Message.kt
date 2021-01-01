@@ -1,4 +1,4 @@
-package com.sunykarasuno.models
+package com.sunykarasuno.intents.models
 
 import com.google.gson.annotations.SerializedName
 
@@ -18,7 +18,7 @@ data class Message(
     @SerializedName("mention_roles")
     val mentionRoles: List<String>,
     @SerializedName("mention_channels")
-    val mentionChannels: List<String>,
+    val mentionChannels: List<String>?,
     val reactions: List<Reaction>,
     val pinned: Boolean,
     @SerializedName("webhook_id")
